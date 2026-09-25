@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>배차표 관리자</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:#f5f4f1; --surface:#ffffff; --surface-sub:#f9f8f6;
+      --border:#e4e2dc; --border-strong:#c8c5bc;
+      --text-primary:#1a1916; --text-secondary:#5c5a55; --text-muted:#9c9990;
+      --accent:#1a4f9c; --accent-bg:#eef3fb; --radius:10px;
+      --font:'Noto Sans KR',sans-serif;
+    }
+    body { font-family:var(--font); background:var(--bg); color:var(--text-primary); min-height:100vh; -webkit-font-smoothing:antialiased; }
+    .login-screen { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:24px; }
+    .login-card { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:32px 28px; width:100%; max-width:340px; text-align:center; }
+    .login-title { font-size:18px; font-weight:700; margin-bottom:6px; }
+    .login-sub { font-size:12px; color:var(--text-muted); margin-bottom:24px; }
+    .login-card input[type="email"] { width:100%; font-family:var(--font); font-size:15px; background:var(--surface-sub); border:1px solid var(--border); border-radius:var(--radius); padding:11px 14px; outline:none; margin-bottom:8px; }
+    .login-card input[type="email"]:focus { border-color:var(--accent); }
+    .login-card input[type="password"] { width:100%; font-family:var(--font); font-size:15px; background:var(--surface-sub); border:1px solid var(--border); border-radius:var(--radius); padding:11px 14px; outline:none; text-align:center; letter-spacing:4px; margin-bottom:12px; }
+    .login-card input[type="password"]:focus { border-color:var(--accent); }
+    .btn-login { width:100%; font-family:var(--font); font-size:14px; font-weight:500; color:#fff; background:var(--accent); border:none; border-radius:var(--radius); padding:11px; cursor:pointer; }
+    .login-error { font-size:12px; color:#9c1a1a; margin-top:10px; display:none; }
+    .admin-screen { display:none; }
+    .admin-header { background:var(--surface); border-bottom:1px solid var(--border); padding:14px 18px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:10; }
+    .admin-header-title { font-size:15px; font-weight:700; }
+    .admin-header-sub { font-size:11px; color:var(--text-muted); margin-top:2px; }
+    .btn-logout { font-family:var(--font); font-size:12px; color:var(--text-muted); background:var(--surface-sub); border:1px solid var(--border); border-radius:var(--radius); padding:6px 12px; cursor:pointer; }
+    .status-bar { display:flex; align-items:center; gap:8px; padding:8px 16px; background:var(--surface-sub); border-bottom:1px solid var(--border); font-size:11.5px; color:var(--text-muted); }
+    .status-dot { width:8px; height:8px; border-radius:50%; background:#b0aca4; flex-shrink:0; transition:background 0.3s; }
+    .status-dot.connected { background:#1e9e50; }
+    .section { background:var(--surface); border-bottom:1px solid var(--border); padding:16px; margin-bottom:8px; }
+    .section-title { font-size:11px; font-weight:700; color:var(--text-muted); letter-spacing:0.5px; margin-bottom:12px; text-transform:uppercase; }
+    .field-row { display:flex; flex-direction:column; gap:4px; margin-bottom:10px; }
+    .field-label { font-size:11.5px; color:var(--text-secondary); font-weight:500; }
+    .field-input { font-family:var(--font); font-size:13.5px; color:var(--text-primary); background:var(--surface-sub); border:1px solid var(--border); border-radius:8px; padding:8px 12px; outline:none; width:100%; transition:border-color 0.15s, background 0.3s; }
+    .field-input:focus { border-color:var(--accent); }
+    .car-section { padding:0 14px 20px; }
+    .car-section-title { font-size:11px; font-weight:700; color:var(--text-muted); letter-spacing:0.5px; padding:16px 0 10px; text-transform:uppercase; }
+    .admin-car-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; margin-bottom:10px; overflow:hidden; }
+    .admin-car-header { display:flex; align-items:center; gap:10px; padding:11px 14px; cursor:pointer; user-select:none; -webkit-tap-highlight-color:transparent; transition:background 0.12s; }
+    .admin-car-header:active { background:var(--surface-sub); }
+    .admin-car-header.open { border-bottom:1px solid var(--border); }
+    .car-badge { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex-shrink:0; }
+    .badge-sonata  { background:#1a6fd4; color:#fff; }
+    .badge-k3      { background:#1e9e50; color:#fff; }
+    .badge-staria  { background:#e8620a; color:#fff; }
+    .badge-celtos  { background:#6c3dd4; color:#fff; }
+    .badge-reserve { background:#b0aca4; color:#fff; }
+    .admin-car-info { flex:1; min-width:0; }
+    .admin-car-name { font-size:14px; font-weight:500; color:var(--text-primary); }
+    .admin-car-sub { font-size:12px; color:var(--text-secondary); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .chevron { font-size:16px; color:var(--text-muted); transition:transform 0.2s; flex-shrink:0; }
+    .chevron.open { transform:rotate(180deg); }
+    .admin-car-body { display:none; padding:14px; gap:10px; flex-direction:column; background:var(--surface-sub); }
+    .admin-car-body.open { display:flex; }
+    .tag-editor { display:flex; flex-wrap:wrap; gap:6px; padding:8px; background:var(--surface); border:1px solid var(--border); border-radius:8px; min-height:44px; align-items:center; cursor:text; }
+    .tag-editor:focus-within { border-color:var(--accent); }
+    .tag { display:inline-flex; align-items:center; gap:4px; background:var(--accent-bg); color:var(--accent); border-radius:6px; padding:3px 8px; font-size:12.5px; font-weight:500; }
+    .tag-remove { background:none; border:none; color:var(--accent); cursor:pointer; font-size:15px; line-height:1; padding:0 2px; opacity:0.7; }
+    .tag-remove:hover { opacity:1; }
+    .tag-input { border:none; outline:none; font-family:var(--font); font-size:13px; color:var(--text-primary); background:transparent; min-width:80px; flex:1; padding:2px 0; }
+    .tag-hint { font-size:11px; color:var(--text-muted); margin-top:3px; }
+    .tag-add-row { display:flex; gap:6px; align-items:center; }
+    .tag-add-input { flex:1; font-family:var(--font); font-size:13px; color:var(--text-primary); background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:8px 12px; outline:none; }
+    .tag-add-input:focus { border-color:var(--accent); }
+    .tag-add-btn { font-family:var(--font); font-size:13px; font-weight:500; color:#fff; background:var(--accent); border:none; border-radius:8px; padding:8px 16px; cursor:pointer; white-space:nowrap; flex-shrink:0; }
+    .tag-add-btn:active { opacity:0.85; }
+    .count-display { font-size:13px; font-weight:500; color:var(--accent); margin-left:4px; }
+    .save-bar { position:fixed; bottom:0; left:0; right:0; padding:12px 16px; background:var(--surface); border-top:1px solid var(--border); z-index:20; }
+    .btn-save { width:100%; font-family:var(--font); font-size:14px; font-weight:500; color:#fff; background:var(--accent); border:none; border-radius:var(--radius); padding:13px; cursor:pointer; }
+    .btn-save:active { opacity:0.85; }
+    .admin-content { padding-bottom:80px; }
+    .toast { position:fixed; top:70px; left:50%; transform:translateX(-50%) translateY(-10px); background:#1a1916; color:#fff; font-size:13px; padding:10px 20px; border-radius:20px; opacity:0; transition:opacity 0.2s, transform 0.2s; z-index:100; white-space:nowrap; pointer-events:none; }
+    .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+<!-- 로그인 -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <div class="login-title">배차표 관리자</div>
+    <div class="login-sub">관리자 계정으로 로그인하세요</div>
+    <input type="email" id="emailInput" class="field-input" placeholder="이메일" style="margin-bottom:8px;text-align:left;letter-spacing:0;" onkeydown="if(event.key==='Enter')document.getElementById('pwInput').focus()" />
+    <input type="password" id="pwInput" placeholder="비밀번호" onkeydown="if(event.key==='Enter')doLogin()" />
+    <button class="btn-login" onclick="doLogin()">로그인</button>
+    <div class="login-error" id="loginError">이메일 또는 비밀번호가 올바르지 않습니다</div>
+  </div>
+</div>
+
+<!-- 관리자 -->
+<div class="admin-screen" id="adminScreen">
+  <div class="admin-header">
+    <div>
+      <div class="admin-header-title">배차표 관리자</div>
+      <div class="admin-header-sub">저장하면 배차표 앱에 즉시 반영됩니다</div>
+    </div>
+    <button class="btn-logout" onclick="doLogout()">로그아웃</button>
+  </div>
+
+  <div class="status-bar">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">Firebase 연결 중...</span>
+  </div>
+
+  <div class="admin-content">
+    <div class="section">
+      <div class="section-title">기본 정보</div>
+      <div class="field-row"><div class="field-label">장례 정보</div><input class="field-input" id="info-funeral" /></div>
+      <div class="field-row"><div class="field-label">일시</div><input class="field-input" id="info-date" /></div>
+      <div class="field-row"><div class="field-label">장소</div><input class="field-input" id="info-place" /></div>
+      <div class="field-row"><div class="field-label">주소</div><input class="field-input" id="info-addr" /></div>
+      <div class="field-row"><div class="field-label">총 인원</div><input class="field-input" id="info-total" readonly style="background:#f0efec;color:var(--text-muted);" /></div>
+    </div>
+    <div class="car-section">
+      <div class="car-section-title">차량별 탑승 정보</div>
+      <div id="carEditorList"></div>
+    </div>
+  </div>
+
+  <div class="save-bar">
+    <button class="btn-save" onclick="saveToFirebase()">저장 — 앱에 즉시 반영</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"
+  onerror="document.getElementById('statusText').textContent='Firebase 로드 실패 — 네트워크 확인 필요';document.getElementById('statusDot').style.background='#c0392b';">
+</script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"
+  onerror="document.getElementById('statusText').textContent='Firebase DB 로드 실패';">
+</script>
+
+<script>
+// ── 전역 상태 ──────────────────────────────────
+var _cars = [];
+var _dbRef = null;
+
+// ── Firebase 초기화 ────────────────────────────
+window.addEventListener('load', function() {
+  try {
+    firebase.initializeApp({
+      apiKey:            "AIzaSyCoStBz_34c5ZvplNSm8rarnd7zVLUiexk",
+      authDomain:        "cgn-love.firebaseapp.com",
+      databaseURL:       "https://cgn-love-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId:         "cgn-love",
+      storageBucket:     "cgn-love.firebasestorage.app",
+      messagingSenderId: "164467571776",
+      appId:             "1:164467571776:web:6c3df66c56f907e808b3a5"
+    });
+
+    // 인증 상태 감지 — 로그인 여부에 따라 화면 전환
+    firebase.auth().onAuthStateChanged(function(user) {
+      if (user) {
+        // 로그인된 상태 → 관리자 화면
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('adminScreen').style.display = 'block';
+        initDB();
+      } else {
+        // 미로그인 → 로그인 화면
+        document.getElementById('adminScreen').style.display = 'none';
+        document.getElementById('loginScreen').style.display = 'flex';
+        if (_dbRef) { _dbRef.off(); _dbRef = null; }
+      }
+    });
+  } catch(e) {
+    document.getElementById('statusDot').style.background = '#c0392b';
+    document.getElementById('statusText').textContent = 'Firebase 오류: ' + e.message;
+  }
+});
+
+function initDB() {
+    _dbRef = firebase.database().ref('baecharyo');
+    _dbRef.on('value', function(snap) {
+      document.getElementById('statusDot').classList.add('connected');
+      document.getElementById('statusText').textContent = 'Firebase 연결됨 — 저장 시 즉시 반영';
+      var data = snap.val();
+      if (data && data.info) {
+        document.getElementById('info-funeral').value = data.info.funeral || '';
+        document.getElementById('info-date').value    = data.info.date    || '';
+        document.getElementById('info-place').value   = data.info.place   || '';
+        document.getElementById('info-addr').value    = data.info.addr    || '';
+      }
+      if (data && data.cars) {
+        _cars = normalizeCars(data.cars);
+      } else {
+        _cars = defaultCars();
+        setDefaultInfo();
+      }
+      renderCarEditors();
+      recalcTotal();
+    }, function(err) {
+      document.getElementById('statusDot').style.background = '#c0392b';
+      document.getElementById('statusText').textContent = '연결 실패: ' + err.message;
+    });
+}
+
+// Firebase 배열→객체 복원 + 정규화
+function normalizeCars(raw) {
+  var arr = Array.isArray(raw) ? raw : Object.values(raw);
+  return arr.map(function(c) {
+    var p = c.passengers;
+    if (!p) p = [];
+    else if (!Array.isArray(p)) p = Object.values(p);
+    p = p.filter(function(v) { return v && String(v).trim(); });
+    return {
+      no:         c.no         || '',
+      type:       c.type       || '',
+      plate:      c.plate      || '',
+      dept:       c.dept       || '',
+      driver:     c.driver     || '',
+      count:      c.count      || 0,
+      badge:      c.badge      || 'badge-reserve',
+      passengers: p,
+    };
+  });
+}
+
+function defaultCars() {
+  return [
+    { no:'1호', type:'소나타', plate:'5311', badge:'badge-sonata', dept:'경영본부', count:4, driver:'서정민', passengers:['대표','경영본부장','퐁당제작본부장'] },
+    { no:'2호', type:'K3', plate:'1440', badge:'badge-k3', dept:'AI혁신팀, 사목, 콘텐츠제작1실', count:4, driver:'김보름', passengers:['김창호','이예랑','백주희'] },
+    { no:'3호', type:'스타리아', plate:'2526', badge:'badge-staria', dept:'퐁당네트워크사역팀, 콘텐츠제작1실', count:8, driver:'안기성', passengers:['강아름','양진아','송유진','박지오','황사라','김희경','유진주'] },
+    { no:'4호', type:'스타리아', plate:'2527', badge:'badge-staria', dept:'콘텐츠제작2실', count:8, driver:'편효원', passengers:['김경숙','심성순','심수정','이성우','김성현','최규섭','민채원'] },
+    { no:'5호', type:'스타리아', plate:'8423', badge:'badge-staria', dept:'콘텐츠플랫폼기획실, 전략기획실', count:8, driver:'유정호', passengers:['성정현','박은초롱','하성은','백린','현아영','지효선','양은주'] },
+    { no:'6호', type:'셀토스', plate:'2459', badge:'badge-celtos', dept:'경영관리실', count:4, driver:'강태욱', passengers:['주웅현','김병준','엄기원'] },
+    { no:'7호', type:'셀토스', plate:'2460', badge:'badge-celtos', dept:'제작기술실', count:3, driver:'이명준', passengers:['박민수','안정기'] },
+    { no:'8호', type:'셀토스', plate:'2461', badge:'badge-celtos', dept:'디자인실, 해외사업팀', count:4, driver:'김영균', passengers:['정민정','배정은','최효선'] },
+    { no:'9호', type:'K3', plate:'2457', badge:'badge-k3', dept:'예비차량', count:0, driver:'', passengers:[] },
+  ];
+}
+
+function setDefaultInfo() {
+  document.getElementById('info-funeral').value = '정지훈 팀장 부친상 (故 정제민(남))';
+  document.getElementById('info-date').value    = '2026년 7월 13일(월) 오전 11:30 출발';
+  document.getElementById('info-place').value   = '원자력병원장례식장 2호실';
+  document.getElementById('info-addr').value    = '서울시 노원구 노원로 75';
+}
+
+function typeToBadge(type) {
+  if (type === '소나타')   return 'badge-sonata';
+  if (type === 'K3')       return 'badge-k3';
+  if (type === '스타리아') return 'badge-staria';
+  if (type === '셀토스')   return 'badge-celtos';
+  return 'badge-reserve';
+}
+
+// ── 인증 ──────────────────────────────────────
+function doLogin() {
+  var email = document.getElementById('emailInput').value.trim();
+  var pw    = document.getElementById('pwInput').value;
+  var errEl = document.getElementById('loginError');
+  errEl.style.display = 'none';
+  if (!email || !pw) { errEl.style.display = 'block'; return; }
+  firebase.auth().signInWithEmailAndPassword(email, pw)
+    .catch(function() {
+      errEl.style.display = 'block';
+      document.getElementById('pwInput').value = '';
+    });
+}
+function doLogout() {
+  firebase.auth().signOut();
+}
+
+// ── 차량 에디터 렌더 ──────────────────────────
+function renderCarEditors() {
+  var list = document.getElementById('carEditorList');
+  list.innerHTML = '';
+  _cars.forEach(function(c, idx) {
+    var div = document.createElement('div');
+    div.className = 'admin-car-card';
+    div.id = 'car-card-' + idx;
+    list.appendChild(div);
+    renderOneEditor(idx);
+  });
+}
+
+function renderOneEditor(idx) {
+  var c = _cars[idx];
+  var card = document.getElementById('car-card-' + idx);
+  card.innerHTML =
+    '<div class="admin-car-header" id="hdr-' + idx + '" onclick="toggleEditor(' + idx + ')">' +
+      '<div class="car-badge ' + c.badge + '" id="badge-' + idx + '">' + c.no + '</div>' +
+      '<div class="admin-car-info">' +
+        '<div class="admin-car-name" id="hdr-name-' + idx + '">' + c.type + ' · ' + c.plate + '</div>' +
+        '<div class="admin-car-sub"  id="hdr-dept-' + idx + '">' + c.dept + '</div>' +
+      '</div>' +
+      '<div class="chevron" id="chv-' + idx + '">&#8964;</div>' +
+    '</div>' +
+    '<div class="admin-car-body" id="body-' + idx + '">' +
+      '<div class="field-row"><div class="field-label">차종</div>' +
+        '<input class="field-input" id="type-' + idx + '" value="' + esc(c.type) + '" oninput="onTypeChange(' + idx + ')" /></div>' +
+      '<div class="field-row"><div class="field-label">번호판</div>' +
+        '<input class="field-input" id="plate-' + idx + '" value="' + esc(c.plate) + '" oninput="onPlateChange(' + idx + ')" /></div>' +
+      '<div class="field-row"><div class="field-label">부서명</div>' +
+        '<input class="field-input" id="dept-' + idx + '" value="' + esc(c.dept) + '" oninput="onDeptChange(' + idx + ')" /></div>' +
+      '<div class="field-row"><div class="field-label">운전자</div>' +
+        '<input class="field-input" id="driver-' + idx + '" value="' + esc(c.driver) + '" oninput="onDriverChange(' + idx + ')" /></div>' +
+      '<div class="field-row">' +
+        '<div class="field-label">탑승인원 <span class="count-display" id="pcnt-' + idx + '">' + c.passengers.length + '명</span></div>' +
+        '<div class="tag-editor" id="tags-' + idx + '" style="margin-bottom:6px;"></div>' +
+        '<div class="tag-add-row">' +
+          '<input class="tag-add-input" id="tag-inp-' + idx + '" placeholder="이름 입력" />' +
+          '<button class="tag-add-btn" onclick="addTagByBtn(' + idx + ')">+ 추가</button>' +
+        '</div>' +
+        '<div class="tag-hint">이름 입력 후 + 추가 버튼 또는 Enter · × 버튼으로 삭제</div>' +
+      '</div>' +
+      '<div class="field-row"><div class="field-label">인원수 (운전자 포함)</div>' +
+        '<input class="field-input" id="count-' + idx + '" type="number" value="' + c.count + '" min="0" /></div>' +
+    '</div>';
+
+  buildTagEditor(idx);
+}
+
+function buildTagEditor(idx) {
+  var container = document.getElementById('tags-' + idx);
+  container.innerHTML = '';
+  _cars[idx].passengers.forEach(function(p, pi) {
+    var tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.innerHTML = esc(p) + '<button class="tag-remove" onclick="removeTag(' + idx + ',' + pi + ')">×</button>';
+    container.appendChild(tag);
+  });
+  // 입력창 키 이벤트 바인딩
+  var inp = document.getElementById('tag-inp-' + idx);
+  if (inp) {
+    inp.onkeydown = null;
+    inp.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault();
+        addTagByBtn(idx);
+      }
+    });
+  }
+}
+
+function addTagByBtn(idx) {
+  var inp = document.getElementById('tag-inp-' + idx);
+  var val = inp.value.trim();
+  if (!val) return;
+  _cars[idx].passengers.push(val);
+  inp.value = '';
+  inp.focus();
+  buildTagEditor(idx);
+  syncCount(idx);
+}
+
+function removeTag(idx, pi) {
+  _cars[idx].passengers.splice(pi, 1);
+  buildTagEditor(idx);
+  syncCount(idx);
+}
+
+function syncCount(idx) {
+  var n = _cars[idx].passengers.length + (_cars[idx].driver ? 1 : 0);
+  _cars[idx].count = n;
+  var el = document.getElementById('count-' + idx);
+  if (el) { el.value = n; el.style.background = '#fffbe6'; setTimeout(function(){ el.style.background=''; }, 800); }
+  var pc = document.getElementById('pcnt-' + idx);
+  if (pc) pc.textContent = _cars[idx].passengers.length + '명';
+  recalcTotal();
+}
+
+function recalcTotal() {
+  var total = 0;
+  _cars.forEach(function(c, idx) {
+    var el = document.getElementById('count-' + idx);
+    total += el ? (parseInt(el.value) || 0) : (c.count || 0);
+  });
+  document.getElementById('info-total').value = '총 ' + total + '명';
+}
+
+// 헤더 동기화
+function onTypeChange(idx) {
+  var v = document.getElementById('type-' + idx).value;
+  document.getElementById('hdr-name-' + idx).textContent = v + ' · ' + (_cars[idx].plate || '');
+  document.getElementById('badge-' + idx).className = 'car-badge ' + typeToBadge(v);
+  _cars[idx].badge = typeToBadge(v);
+}
+function onPlateChange(idx) {
+  var v = document.getElementById('plate-' + idx).value;
+  document.getElementById('hdr-name-' + idx).textContent = (_cars[idx].type || '') + ' · ' + v;
+}
+function onDeptChange(idx) {
+  document.getElementById('hdr-dept-' + idx).textContent = document.getElementById('dept-' + idx).value;
+}
+function onDriverChange(idx) {
+  _cars[idx].driver = document.getElementById('driver-' + idx).value;
+  syncCount(idx);
+}
+
+function toggleEditor(idx) {
+  var body = document.getElementById('body-' + idx);
+  var hdr  = document.getElementById('hdr-'  + idx);
+  var chv  = document.getElementById('chv-'  + idx);
+  var open = body.classList.toggle('open');
+  hdr.classList.toggle('open', open);
+  chv.classList.toggle('open', open);
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── 수집 & 저장 ──────────────────────────────
+function collectData() {
+  return _cars.map(function(c, idx) {
+    var p = (_cars[idx].passengers || []).filter(function(v){ return v && String(v).trim(); });
+    var obj = {
+      no:     c.no,
+      type:   document.getElementById('type-'   + idx).value,
+      plate:  document.getElementById('plate-'  + idx).value,
+      dept:   document.getElementById('dept-'   + idx).value,
+      driver: document.getElementById('driver-' + idx).value || '',
+      count:  parseInt(document.getElementById('count-'  + idx).value) || 0,
+      badge:  typeToBadge(document.getElementById('type-' + idx).value),
+    };
+    // Firebase는 빈 배열 저장 불가 — 이름 있을 때만 저장
+    if (p.length > 0) obj.passengers = p;
+    return obj;
+  });
+}
+
+function saveToFirebase() {
+  if (!_dbRef) { showToast('Firebase 연결 중입니다. 잠시 후 다시 시도하세요.'); return; }
+  var data = {
+    info: {
+      funeral: document.getElementById('info-funeral').value,
+      date:    document.getElementById('info-date').value,
+      place:   document.getElementById('info-place').value,
+      addr:    document.getElementById('info-addr').value,
+      total:   document.getElementById('info-total').value,
+    },
+    cars: collectData(),
+  };
+  _dbRef.set(data)
+    .then(function() { showToast('저장 완료 — 배차표 앱에 즉시 반영되었습니다'); })
+    .catch(function(err) { showToast('저장 실패: ' + err.message); });
+}
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 3000);
+}
+</script>
+</body>
+</html>

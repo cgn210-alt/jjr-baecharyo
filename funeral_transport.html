@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>조문 차량 탑승 배차표</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{--bg:#f5f4f1;--surface:#fff;--surface-sub:#f9f8f6;--border:#e4e2dc;--border-strong:#c8c5bc;--text-primary:#1a1916;--text-secondary:#5c5a55;--text-muted:#9c9990;--accent-bg:#eef3fb;--accent-text:#1a4f9c;--radius:10px;--font:'Noto Sans KR',sans-serif}
+    body{font-family:var(--font);background:var(--bg);color:var(--text-primary);min-height:100vh;-webkit-font-smoothing:antialiased}
+    .header{background:var(--surface);border-bottom:1px solid var(--border);padding:20px 18px 16px;text-align:center;position:sticky;top:0;z-index:10}
+    .header-title{font-size:20px;font-weight:700;letter-spacing:-.5px;margin-bottom:10px}
+    .header-meta{font-size:12.5px;color:var(--text-secondary);line-height:2}
+    .header-meta span{display:block}
+    .addr{color:var(--text-muted);font-size:11.5px}
+    .total-badge{display:inline-block;margin-top:10px;background:var(--accent-bg);color:var(--accent-text);border-radius:20px;padding:4px 16px;font-size:13px;font-weight:500}
+    .legend{display:flex;gap:12px;flex-wrap:wrap;padding:9px 16px;background:var(--surface);border-bottom:1px solid var(--border);justify-content:center}
+    .legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary)}
+    .legend-dot{width:13px;height:13px;border-radius:50%}
+    .ld-sonata{background:#1a6fd4}.ld-k3{background:#1e9e50}.ld-staria{background:#e8620a}.ld-celtos{background:#6c3dd4}
+    .search-wrap{padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border)}
+    .search-wrap input{width:100%;font-family:var(--font);font-size:14px;color:var(--text-primary);background:var(--surface-sub);border:1px solid var(--border);border-radius:var(--radius);padding:9px 14px;outline:none}
+    .search-wrap input::placeholder{color:var(--text-muted)}
+    .car-list{padding:14px 14px 32px;display:flex;flex-direction:column;gap:10px}
+    .car-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+    .car-card-header{display:flex;align-items:center;gap:11px;padding:12px 14px;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;transition:background .12s}
+    .car-card-header:active{background:var(--surface-sub)}
+    .car-badge{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;flex-shrink:0}
+    .badge-sonata{background:#1a6fd4;color:#fff}.badge-k3{background:#1e9e50;color:#fff}.badge-staria{background:#e8620a;color:#fff}.badge-celtos{background:#6c3dd4;color:#fff}.badge-reserve{background:#b0aca4;color:#fff}
+    .car-info{flex:1;min-width:0}
+    .car-name-row{display:flex;align-items:center;gap:8px}
+    .car-name{font-size:14px;font-weight:500}
+    .car-plate{font-size:12.5px;font-weight:700;font-family:'Courier New',monospace;background:var(--bg);border:1px solid var(--border-strong);border-radius:5px;padding:1px 7px;letter-spacing:.8px}
+    .car-dept{font-size:12px;color:var(--text-secondary);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .car-meta{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0}
+    .person-count{font-size:13px;font-weight:500}
+    .driver-name{font-size:11.5px;color:var(--text-muted)}
+    .chevron{color:var(--text-muted);font-size:18px;line-height:1;transition:transform .2s;flex-shrink:0;margin-left:2px}
+    .chevron.open{transform:rotate(180deg)}
+    .car-card-body{display:none;padding:12px 14px 14px;gap:9px;flex-direction:column;border-top:1px solid var(--border);background:var(--surface-sub)}
+    .car-card-body.open{display:flex}
+    .detail-row{display:flex;gap:10px;align-items:flex-start}
+    .detail-label{font-size:11.5px;color:var(--text-muted);min-width:44px;flex-shrink:0;padding-top:3px;font-weight:500}
+    .detail-val{font-size:13.5px;line-height:1.6}
+    .passenger-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+    .pchip{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:4px 10px;font-size:12.5px}
+    .no-result{text-align:center;padding:48px 0;font-size:13px;color:var(--text-muted);display:none}
+    .loading{text-align:center;padding:60px 0;font-size:13px;color:var(--text-muted)}
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+    .footer{text-align:center;padding:20px 16px;border-top:1px solid var(--border);margin-top:4px}
+    .footer-line{display:block;font-family:'Share Tech Mono',monospace;letter-spacing:2px;margin:4px 0}
+    .footer-cgn{font-size:15px;color:var(--text-secondary);font-weight:400}
+    .footer-guardian{font-size:13px;color:var(--text-muted);cursor:pointer;text-decoration:underline dotted;-webkit-tap-highlight-color:transparent}
+    .footer-date{font-size:11px;color:var(--text-muted);letter-spacing:0}
+    .guardian-tooltip{display:none;margin-top:8px;font-size:11.5px;color:var(--text-secondary);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 14px;font-family:var(--font);letter-spacing:0}
+    .guardian-tooltip.show{display:block}
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">조문 차량 탑승 배차표</div>
+  <div class="header-meta">
+    <span id="metaFuneral"></span>
+    <span id="metaDate"></span>
+    <span id="metaPlace"></span>
+    <span class="addr" id="metaAddr"></span>
+  </div>
+  <div class="total-badge" id="totalBadge">불러오는 중...</div>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot ld-sonata"></div>소나타</div>
+  <div class="legend-item"><div class="legend-dot ld-k3"></div>K3</div>
+  <div class="legend-item"><div class="legend-dot ld-staria"></div>스타리아</div>
+  <div class="legend-item"><div class="legend-dot ld-celtos"></div>셀토스</div>
+</div>
+
+<div class="search-wrap">
+  <input type="text" id="searchInput" placeholder="이름, 부서, 차량 검색" />
+</div>
+
+<div class="car-list" id="carList">
+  <div class="loading">데이터를 불러오는 중입니다...</div>
+</div>
+<div class="no-result" id="noResult">검색 결과가 없습니다</div>
+
+<div class="footer">
+  <div class="footer-row">
+    <span class="footer-cgn">CGN</span>
+    <span class="footer-sep">·</span>
+    <span class="footer-guardian" id="guardianBtn">GUARDIAN</span>
+    <span class="footer-sep">·</span>
+    <span class="footer-date">2026.07.13</span>
+  </div>
+  <div class="guardian-tooltip" id="guardianTooltip">경영관리실 실장 주웅현</div>
+</div>
+
+<script>
+// ── 전역 ──────────────────────────────────────────
+var allCars = [];
+var DB_URL = 'https://cgn-love-default-rtdb.asia-southeast1.firebasedatabase.app/baecharyo.json';
+var POLL_INTERVAL = 10000; // 10초마다 갱신
+
+// ── 검색 필터 적용 ───────────────────────────────
+function applyFilter() {
+  var q = document.getElementById('searchInput').value.trim().toLowerCase();
+  if (!q) { renderCards(allCars); return; }
+  renderCards(allCars.filter(function(c) {
+    return c.no.toLowerCase().includes(q) ||
+      c.type.toLowerCase().includes(q) ||
+      c.plate.toLowerCase().includes(q) ||
+      c.dept.toLowerCase().includes(q) ||
+      c.driver.toLowerCase().includes(q) ||
+      c.passengers.some(function(p) { return String(p).toLowerCase().includes(q); });
+  }));
+}
+
+// ── 데이터 로드 (Firebase REST API) ───────────────
+function loadData() {
+  fetch(DB_URL)
+    .then(function(res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    })
+    .then(function(data) {
+      if (!data) {
+        if (!allCars.length) {
+          document.getElementById('carList').innerHTML =
+            '<div class="loading" style="color:#c0392b">데이터 없음 — 관리자 페이지에서 저장해 주세요.</div>';
+        }
+        return;
+      }
+      // 헤더 정보 업데이트
+      if (data.info) {
+        document.getElementById('metaFuneral').textContent = '장례 : ' + (data.info.funeral || '');
+        document.getElementById('metaDate').textContent    = data.info.date  || '';
+        document.getElementById('metaPlace').textContent   = data.info.place || '';
+        document.getElementById('metaAddr').textContent    = data.info.addr  || '';
+        document.getElementById('totalBadge').textContent  = data.info.total || '';
+      }
+      // 데이터만 업데이트 — 화면은 applyFilter가 관리
+      var newCars = toCarsArray(data.cars);
+      var firstLoad = (allCars.length === 0);
+      allCars = newCars;
+      // 최초 로드이거나 검색어 없을 때만 전체 렌더링
+      // 검색 중이면 검색 결과 유지
+      var q = document.getElementById('searchInput').value.trim();
+      if (firstLoad || !q) {
+        applyFilter();
+      }
+    })
+    .catch(function(err) {
+      if (!allCars.length) {
+        document.getElementById('carList').innerHTML =
+          '<div class="loading" style="color:#c0392b">연결 오류: ' + err.message + '</div>';
+      }
+    });
+}
+
+// 최초 로드 + 주기적 갱신 (데이터만 백그라운드 업데이트)
+loadData();
+setInterval(loadData, POLL_INTERVAL);
+
+// ── 정규화 ────────────────────────────────────────
+function toCarsArray(raw) {
+  if (!raw) return [];
+  var arr = Array.isArray(raw) ? raw : Object.values(raw);
+  return arr
+    .filter(function(c) { return c && typeof c === 'object'; })
+    .map(function(c) {
+      return {
+        no:         String(c.no     || ''),
+        type:       String(c.type   || ''),
+        plate:      String(c.plate  || ''),
+        dept:       String(c.dept   || ''),
+        driver:     String(c.driver || ''),
+        count:      parseInt(c.count) || 0,
+        badge:      String(c.badge  || 'badge-reserve'),
+        passengers: toArr(c.passengers)
+      };
+    });
+}
+
+function toArr(raw) {
+  if (!raw) return [];
+  var arr = Array.isArray(raw) ? raw : Object.values(raw);
+  return arr.filter(function(v) { return v && String(v).trim() !== ''; });
+}
+
+// ── 렌더링 ────────────────────────────────────────
+function renderCards(list) {
+  var el = document.getElementById('carList');
+  var nr = document.getElementById('noResult');
+  el.innerHTML = '';
+  if (!list || !list.length) { nr.style.display = 'block'; return; }
+  nr.style.display = 'none';
+  list.forEach(function(c) {
+    var card = document.createElement('div');
+    card.className = 'car-card';
+    var chips = c.passengers.length
+      ? c.passengers.map(function(p) { return '<span class="pchip">' + p + '</span>'; }).join('')
+      : '<span style="font-size:12.5px;color:#9c9990">미정</span>';
+    card.innerHTML =
+      '<div class="car-card-header" onclick="toggle(this)">' +
+        '<div class="car-badge ' + c.badge + '">' + c.no + '</div>' +
+        '<div class="car-info">' +
+          '<div class="car-name-row">' +
+            '<span class="car-name">' + c.type + '</span>' +
+            '<span class="car-plate">' + c.plate + '</span>' +
+          '</div>' +
+          '<div class="car-dept">' + c.dept + '</div>' +
+        '</div>' +
+        '<div class="car-meta">' +
+          '<span class="person-count">' + (c.count ? c.count + '명' : '예비') + '</span>' +
+          (c.driver ? '<span class="driver-name">' + c.driver + '</span>' : '') +
+        '</div>' +
+        '<div class="chevron">&#8964;</div>' +
+      '</div>' +
+      '<div class="car-card-body">' +
+        '<div class="detail-row"><span class="detail-label">운전자</span><span class="detail-val">' + (c.driver || '미정') + '</span></div>' +
+        '<div class="detail-row"><span class="detail-label">부서</span><span class="detail-val">' + c.dept + '</span></div>' +
+        '<div class="detail-row"><span class="detail-label">탑승인원</span><div class="passenger-chips">' + chips + '</div></div>' +
+      '</div>';
+    el.appendChild(card);
+  });
+}
+
+function toggle(h) {
+  h.nextElementSibling.classList.toggle('open');
+  h.querySelector('.chevron').classList.toggle('open');
+}
+
+// ── 검색 ──────────────────────────────────────────
+document.getElementById('searchInput').addEventListener('input', applyFilter);
+
+// ── GUARDIAN ──────────────────────────────────────
+document.getElementById('guardianBtn').addEventListener('click', function() {
+  var t = document.getElementById('guardianTooltip');
+  t.classList.toggle('show');
+  if (t.classList.contains('show')) {
+    setTimeout(function() { t.classList.remove('show'); }, 3000);
+  }
+});
+</script>
+</body>
+</html>
